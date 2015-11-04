@@ -1,0 +1,21 @@
+{
+  "name": "s3browsercli",
+  "version": "0.0.1",
+  "description": "S3 browser for command line",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "s3"
+  ],
+  "author": "Haoli Du",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^1.4.2",
+    "aws-sdk": "^2.2.10",
+    "chalk": "^1.1.1",
+    "command-line-args": "^2.0.4",
+    "prompt": "^0.2.14"
+  }
+}
