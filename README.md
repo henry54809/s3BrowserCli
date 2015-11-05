@@ -22,10 +22,11 @@ node app.js -p your_profile
 cd folder
 ls
 get file
+get files under current directory based on regex 
+  eg. get .* to get all files
 ```
 
 ###TODO
-* get multiple files
 * search file based on regex
 * upload multiple files
 * support multiple level up -> cd ../../../ etc
