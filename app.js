@@ -196,12 +196,13 @@ async.waterfall([
         var allFiles = returnVars.allFiles;
         var commonPrefixes = returnVars.commonPrefixes;
         listFiles(allFiles, commonPrefixes, '', function() {
-            return next(null, commonPrefixes);
+            return next(null, allFiles, commonPrefixes);
         });
     },
-    function(commonPrefixes, next) {
+    function(allFiles, commonPrefixes, next) {
         var currentFolder = '';
         var lastCommonPrefixes = commonPrefixes;
+        var lastAllFiles = allFiles;
         console.log('Type help for help.');
         async.forever(function(loop) {
             prompt.start();
@@ -241,7 +242,8 @@ async.waterfall([
                     if (!new RegExp('/$').test(command)) {
                         command += '/';
                     }
-                    if (command == './') {
+                    if (command == './' || command == '/') {
+                        command = '';
                         found = true;
                     }
 
@@ -249,6 +251,9 @@ async.waterfall([
                         var lastFolder = new RegExp('\\w+/$').exec(currentFolder);
                         if (lastFolder) {
                             currentFolder = currentFolder.substring(0, currentFolder.length - lastFolder[0].length);
+                            if (currentFolder == '/') {
+                                currentFolder = '';
+                            }
                         } else {
                             console.log(chalk.red('Cannot go beyond root.'));
                             return loop();
@@ -269,6 +274,7 @@ async.waterfall([
                         var allFiles = returnVars.allFiles;
                         var commonPrefixes = returnVars.commonPrefixes;
                         lastCommonPrefixes = commonPrefixes;
+                        lastAllFiles = allFiles;
                         listFiles(allFiles, commonPrefixes, currentFolder, loop);
                     });
                 } else if (new RegExp('^ls').test(command)) {
@@ -280,22 +286,31 @@ async.waterfall([
                 } else if (new RegExp('^get').test(command)) {
                     var get = new RegExp('^get').exec(command);
                     command = command.substring(get[0].length + 1).trim();
-                    var stream = fs.createWriteStream(command, {
-                        flags: 'w',
-                        encoding: null,
-                        mode: '0666'
-                    });
-                    s3.getObject({
-                        Bucket: bucket,
-                        Key: currentFolder + command
-                    })
-                        .on('httpData', function(data) {
-                            stream.write(data);
+                    async.each(lastAllFiles, function(file, callback) {
+                        if (!new RegExp('\\.*' + command + '\\.*').test(file.Key)) {
+                            return callback();
+                        }
+                        var basename = file.Key.substring(currentFolder.length);
+                        var stream = fs.createWriteStream(basename, {
+                            flags: 'w',
+                            encoding: null,
+                            mode: '0666'
+                        });
+                        s3.getObject({
+                            Bucket: bucket,
+                            Key: file.Key
                         })
-                        .on('complete', function() {
-                            stream.end();
-                            loop();
-                        }).send();
+                            .on('httpData', function(data) {
+                                stream.write(data);
+                            })
+                            .on('complete', function() {
+                                console.log(chalk.green('Downloaded ' + basename))
+                                stream.end();
+                                callback();
+                            }).send();
+                    }, function() {
+                        loop();
+                    });
                 }
             });
         }, function(err) {
